@@ -5,7 +5,7 @@ import random
 import string
 import logging
 
-API_TOKEN = '6735405496:AAGaGV_xl_USLGAYPjdS6SorJo2T4-98uZE'
+API_TOKEN = 'token'
 logging.basicConfig(level=logging.INFO, filename='log.txt', filemode='a',
                     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
