@@ -1,16 +1,19 @@
 import atexit
 from aiogram import Bot, Dispatcher, executor, types
 from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
+from dotenv import load_dotenv
+import os
 import random
 import string
 import logging
 
-API_TOKEN = 'token'
+
 logging.basicConfig(level=logging.INFO, filename='log.txt', filemode='a',
                     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
 
-bot = Bot(token=API_TOKEN)
+load_dotenv()
+bot = Bot(os.getenv('TOKEN'))
 dp = Dispatcher(bot)
 
 WORDS = ["айограм", "питон", "телеграм", "виселица", "программирование", "кодирование", "асинхронность", "бот"]
@@ -114,7 +117,7 @@ async def help_command(message: types.Message):
                  "/review - оставить отзыв\n"
                  "/about - о боте\n"
                  "/help - показать эту справку\n"
-                 "Чтобы сделать предположение, отправьте код игры и букву или слово (например, ABCDEпитон).")
+                 "Чтобы сделать предположение, отправьте код игры и букву или слово (например, ABCDE питон).")
     await message.reply(help_text)
 
 @dp.message_handler(commands=['start', 'restart'])
@@ -165,7 +168,7 @@ async def set_word(message: types.Message):
     game_code = ''.join(random.choices(string.ascii_uppercase + string.digits, k=5))
     games[game_code] = HangmanGame(secret_word)
     await message.reply(
-        f"Слово для игры установлено. Код игры: `{game_code}`.Используйте этот код. У вас {len(secret_word) + 5} попыток.",
+        f"Слово для игры установлено. Код игры: `{game_code}`. Используйте этот код. У вас {len(secret_word) + 5} попыток.",
         parse_mode='Markdown', reply_markup=generate_game_keyboard())
 
 
