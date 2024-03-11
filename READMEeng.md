@@ -2,6 +2,10 @@
 
 This bot for Telegram offers the classic game of "Hangman," where players must guess words one letter at a time.
 
+## WARNING
+
+This code will not work as you need to create `log.txt` and `reviews.txt` files, as well as a `.env` file in which to write your bot's API token.
+
 ## Features
 
 - **Start a New Game**: Players can start a new game, and the bot will automatically select a word for guessing.
