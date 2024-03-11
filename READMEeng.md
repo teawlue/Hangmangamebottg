@@ -27,6 +27,7 @@ This code will not work as you need to create `log.txt` and `reviews.txt` files,
 - `/review` - leave a rating and review of the bot.
 - `/about` - learn about the project and its creator.
 - `/social` - get the author's contact information.
+- `/support` - support the project with a donation.
 
 ## Technologies
 
