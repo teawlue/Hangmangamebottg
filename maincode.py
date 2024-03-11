@@ -116,6 +116,7 @@ async def help_command(message: types.Message):
                  "/social - связаться с автором бота\n"
                  "/review - оставить отзыв\n"
                  "/about - о боте\n"
+                 "/support - поддержать проект пожертвованием\n"
                  "/help - показать эту справку\n"
                  "Чтобы сделать предположение, отправьте код игры и букву или слово (например, ABCDE питон).")
     await message.reply(help_text)
@@ -189,6 +190,11 @@ async def process_help_callback_query(callback_query: types.CallbackQuery):
     log_message(callback_query.from_user, callback_query.data)
     await help_command(callback_query.message)
 
+@dp.message_handler(commands=['support'])
+async def support_command(message: types.Message):
+    keyboard = InlineKeyboardMarkup()
+    keyboard.add(InlineKeyboardButton("Поддержать", url="https://www.donationalerts.com/r/underkassq"))
+    await message.reply("Если вы хотите поддержать мою работу, не стесняйтесь делать пожертвования. Любая сумма помогает и очень ценится!", reply_markup=keyboard)
 
 @dp.message_handler(commands=['social'])
 async def social_command(message: types.Message):
@@ -209,11 +215,11 @@ async def process_guess_logic(game, guess, message, is_word=False):
             game.guessed_letters = set(game.secret_word)  # Считаем все буквы угаданными
     if correct:
         if game.is_victory():
-            await message.answer(f"Поздравляем! Вы угадали слово: `{game.secret_word}`. /restart чтобы начать заново.", parse_mode='Markdown')
+            await message.answer(f"Поздравляем! Вы угадали слово: `{game.secret_word}`. /start чтобы начать заново.", parse_mode='Markdown')
             return
     else:
         if game.is_game_over():
-            await message.answer(f"Игра окончена! Слово было: `{game.secret_word}`. /restart чтобы начать заново.", parse_mode='Markdown')
+            await message.answer(f"Игра окончена! Слово было: `{game.secret_word}`. /start чтобы начать заново.", parse_mode='Markdown')
             return
     await message.answer(f"{game.get_display_word()} Осталось попыток: {game.attempts}", reply_markup=generate_game_keyboard())
 
