@@ -1,8 +1,7 @@
 import atexit
 from aiogram import Bot, Dispatcher, executor, types
 from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
-from dotenv import load_dotenv
-import os
+from config import TOKEN
 import random
 import string
 import logging
@@ -12,8 +11,8 @@ logging.basicConfig(level=logging.INFO, filename='log.txt', filemode='a',
                     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
 
-load_dotenv()
-bot = Bot(os.getenv('TOKEN'))
+
+bot = Bot(TOKEN)
 dp = Dispatcher(bot)
 
 WORDS = ["айограм", "питон", "телеграм", "виселица", "программирование", "кодирование", "асинхронность", "бот"]
