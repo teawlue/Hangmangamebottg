@@ -1,6 +1,6 @@
 # Telegram Hangman Bot
 
-This bot for Telegram offers the classic game of "Hangman," where players must guess words one letter at a time.
+This bot for Telegram offers the classic game of "Hangman", where players must guess words one letter at a time.
 
 ## WARNING
 
