@@ -4,7 +4,7 @@ This bot for Telegram offers the classic game of "Hangman", where players must g
 
 ## WARNING
 
-This code will not work as you need to create `log.txt` and `reviews.txt` files, as well as a `.env` file in which to write your bot's API token.
+This code will not work as you need to create `log.txt` and `reviews.txt` files, as well as write your bot's API token to the `TOKEN` variable in the file `config.py`.
 
 ## Features
 
