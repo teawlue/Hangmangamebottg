@@ -33,7 +33,6 @@ This code will not work as you need to create `log.txt` and `reviews.txt` files,
 
 - Python 3
 - aiogram for creating the bot
-- dotenv for managing configurations
 
 ## Author
 
