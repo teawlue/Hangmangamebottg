@@ -32,7 +32,7 @@ This code will not work as you need to create `log.txt` and `reviews.txt` files,
 ## Technologies
 
 - Python 3
-- aiogram for creating the bot
+- aiogram 2.2 for creating the bot
 
 ## Author
 
