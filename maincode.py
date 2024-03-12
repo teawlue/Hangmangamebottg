@@ -5,12 +5,11 @@ from config import TOKEN
 import random
 import string
 import logging
-
+import datetime
 
 logging.basicConfig(level=logging.INFO, filename='log.txt', filemode='a',
                     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
-
 
 bot = Bot(TOKEN)
 dp = Dispatcher(bot)
@@ -19,14 +18,18 @@ WORDS = ["айограм", "питон", "телеграм", "виселица",
 games = {}
 reviews = {}
 
+
 def log_divider():
     logger.info("__________ Program is finished __________")
 
+
 atexit.register(log_divider)
+
 
 def log_message(user, message_text):
     username = f"@{user.username}" if user.username else user.first_name
     logger.info(f"Message from {username}: {message_text}")
+
 
 class HangmanGame:
     def __init__(self, secret_word):
@@ -52,11 +55,13 @@ class HangmanGame:
     def is_victory(self):
         return all(letter in self.guessed_letters for letter in self.secret_word)
 
+
 def rating_keyboard():
     keyboard = InlineKeyboardMarkup()
     for i in range(1, 6):
         keyboard.add(InlineKeyboardButton(f"{i} ⭐️", callback_data=f"rate_{i}"))
     return keyboard
+
 
 def generate_game_keyboard():
     keyboard = InlineKeyboardMarkup()
@@ -64,24 +69,29 @@ def generate_game_keyboard():
     keyboard.add(InlineKeyboardButton("Помощь", callback_data="help"))
     return keyboard
 
+
 # Обработчик команды /review
 @dp.message_handler(commands=['review'])
 async def review_command(message: types.Message):
     log_message(message.from_user, message.text)
     await message.answer("Оцените бота от 1 до 5 звезд:", reply_markup=rating_keyboard())
 
-#Обработчик команды /surrender
+
+# Обработчик команды /surrender
 @dp.callback_query_handler(lambda c: c.data == 'surrender')
 async def process_surrender(callback_query: types.CallbackQuery):
     user_id = callback_query.from_user.id
     game_code = next((code for code, game in games.items() if game['user_id'] == user_id), None)
     if game_code:
         game = games[game_code]
-        await bot.send_message(user_id, f"Вы сдались. Правильное слово было: `{game['game'].secret_word}`. Не отчаивайтесь и попробуйте снова! /start для новой игры.", parse_mode='Markdown')
+        await bot.send_message(user_id,
+                               f"Вы сдались. Правильное слово было: `{game['game'].secret_word}`. Не отчаивайтесь и попробуйте снова! /start для новой игры.",
+                               parse_mode='Markdown')
         del games[game_code]  # Удаление игры после сдачи
     else:
         await bot.send_message(user_id, "Кажется, у вас нет активных игр. Используйте /start, чтобы начать новую игру.")
     await bot.answer_callback_query(callback_query.id)
+
 
 # Обработчик выбора рейтинга
 @dp.callback_query_handler(lambda c: c.data.startswith('rate_'))
@@ -89,9 +99,11 @@ async def process_rating(callback_query: types.CallbackQuery):
     rate = callback_query.data.split('_')[1]
     user_id = callback_query.from_user.id  # Используем user_id для ключа в reviews
     username = f"@{callback_query.from_user.username}" if callback_query.from_user.username else callback_query.from_user.first_name
-    reviews[user_id] = {'rate': rate, 'text': None, 'username': username}  # Сохраняем username здесь для последующего использования
+    reviews[user_id] = {'rate': rate, 'text': None,
+                        'username': username}  # Сохраняем username здесь для последующего использования
     await bot.answer_callback_query(callback_query.id)
     await bot.send_message(user_id, "Спасибо за вашу оценку! Напишите, пожалуйста, ваш отзыв.")
+
 
 @dp.message_handler(lambda message: message.from_user.id in reviews and reviews[message.from_user.id]['text'] is None)
 async def handle_review_text(message: types.Message):
@@ -100,11 +112,12 @@ async def handle_review_text(message: types.Message):
     review_info['text'] = message.text
     try:
         with open('reviews.txt', 'a', encoding='utf-8') as file:
-            file.write(f"UserID: {review_info['username']}, Rating: {review_info['rate']}, Review: {message.text}\n")
+            file.write(f"{str(datetime.datetime.now())[:-7]} - UserID: {review_info['username']}, Rating: {review_info['rate']}, Review: {message.text}\n")
         await message.answer("Ваш отзыв успешно сохранен! Спасибо за обратную связь.")
     except Exception as e:
         logger.error(f"Ошибка при сохранении отзыва: {e}")
         await message.answer("Произошла ошибка при сохранении вашего отзыва. Пожалуйста, попробуйте снова.")
+
 
 @dp.message_handler(commands=['help'])
 async def help_command(message: types.Message):
@@ -120,6 +133,7 @@ async def help_command(message: types.Message):
                  "Чтобы сделать предположение, отправьте код игры и букву или слово (например, ABCDE питон).")
     await message.reply(help_text)
 
+
 @dp.message_handler(commands=['start', 'restart'])
 async def start_game(message: types.Message):
     user_id = message.from_user.id
@@ -129,6 +143,7 @@ async def start_game(message: types.Message):
     await message.reply(
         f"Игра 'Виселица' началась! Угадайте букву, отправив ее. Ваш код игры: `{game_code}`. У вас {len(secret_word) + 5} попыток. Используйте кнопку ниже, чтобы сдаться.",
         parse_mode='Markdown', reply_markup=generate_game_keyboard())
+
 
 @dp.message_handler(commands=['about'])
 async def about_command(message: types.Message):
@@ -153,6 +168,7 @@ async def about_command(message: types.Message):
 Спасибо, что интересуетесь моим проектом! Если у вас есть вопросы или предложения, используйте команду /social, чтобы связаться со мной.
     """
     await message.answer(about_text, parse_mode='Markdown')
+
 
 @dp.message_handler(commands=['setword'])
 async def set_word(message: types.Message):
@@ -189,11 +205,15 @@ async def process_help_callback_query(callback_query: types.CallbackQuery):
     log_message(callback_query.from_user, callback_query.data)
     await help_command(callback_query.message)
 
+
 @dp.message_handler(commands=['support'])
 async def support_command(message: types.Message):
     keyboard = InlineKeyboardMarkup()
     keyboard.add(InlineKeyboardButton("Поддержать", url="https://www.donationalerts.com/r/underkassq"))
-    await message.reply("Если вы хотите поддержать мою работу, не стесняйтесь делать пожертвования. Любая сумма помогает и очень ценится!", reply_markup=keyboard)
+    await message.reply(
+        "Если вы хотите поддержать мою работу, не стесняйтесь делать пожертвования. Любая сумма помогает и очень ценится!",
+        reply_markup=keyboard)
+
 
 @dp.message_handler(commands=['social'])
 async def social_command(message: types.Message):
@@ -204,8 +224,8 @@ async def social_command(message: types.Message):
     keyboard.add(InlineKeyboardButton("Github", url="https://github.com/megafortniter49"))
     await message.reply("Связаться с автором бота:", reply_markup=keyboard)
 
+
 async def process_guess_logic(game, guess, message, is_word=False):
-    correct = False
     if not is_word:
         correct = game.guess_letter(guess)
     else:
@@ -214,13 +234,17 @@ async def process_guess_logic(game, guess, message, is_word=False):
             game.guessed_letters = set(game.secret_word)  # Считаем все буквы угаданными
     if correct:
         if game.is_victory():
-            await message.answer(f"Поздравляем! Вы угадали слово: `{game.secret_word}`. /start чтобы начать заново.", parse_mode='Markdown')
+            await message.answer(f"Поздравляем! Вы угадали слово: `{game.secret_word}`. /start чтобы начать заново.",
+                                 parse_mode='Markdown')
             return
     else:
         if game.is_game_over():
-            await message.answer(f"Игра окончена! Слово было: `{game.secret_word}`. /start чтобы начать заново.", parse_mode='Markdown')
+            await message.answer(f"Игра окончена! Слово было: `{game.secret_word}`. /start чтобы начать заново.",
+                                 parse_mode='Markdown')
             return
-    await message.answer(f"{game.get_display_word()} Осталось попыток: {game.attempts}", reply_markup=generate_game_keyboard())
+    await message.answer(f"{game.get_display_word()} Осталось попыток: {game.attempts}",
+                         reply_markup=generate_game_keyboard())
+
 
 @dp.message_handler()
 async def guess_letter(message: types.Message):
