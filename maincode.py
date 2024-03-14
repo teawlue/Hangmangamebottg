@@ -77,12 +77,14 @@ class HangmanGame:
 
     def guess_letter(self, letter):
         letter = letter.upper()
-        if letter in self.secret_word:
+        if letter in self.guessed_letters:
+            return "already_guessed"
+        elif letter in self.secret_word:
             self.guessed_letters.add(letter)
-            return True
+            return "correct"
         else:
             self.attempts -= 1
-            return False
+            return "incorrect"
 
     def get_display_word(self):
         return ' '.join(letter if letter in self.guessed_letters else '_' for letter in self.secret_word)
@@ -287,13 +289,27 @@ async def process_guess_logic(game, guess, message, is_word=False):
 @dp.message_handler()
 async def guess_letter(message: types.Message):
     log_message(message.from_user, message.text)
-    parts = message.text.strip().upper().split(maxsplit=1)  # Разделяем на 2 части: код игры и предположение
+    parts = message.text.strip().upper().split(maxsplit=1)
     if len(parts) == 2:
         game_code, guess = parts
         if game_code in games and games[game_code]['user_id'] == message.from_user.id:
             game = games[game_code]['game']
-            if len(guess) == 1:  # Если ввод одной буквы
-                await process_guess_logic(game, guess, message)
+            if len(guess) == 1:
+                guess_result = game.guess_letter(guess)
+                if guess_result == "already_guessed":
+                    await message.reply(f"Вы уже пытались угадать букву {guess}. Попробуйте другую.")
+                elif guess_result == "correct":
+                    if game.is_victory():
+                        await message.answer(f"Поздравляем! Вы угадали слово: `{game.secret_word}`. /start чтобы начать заново.", parse_mode='Markdown')
+                        del games[game_code]
+                    else:
+                        await message.answer(f"{game.get_display_word()} Осталось попыток: {game.attempts}", reply_markup=generate_game_keyboard())
+                elif guess_result == "incorrect":
+                    if game.is_game_over():
+                        await message.answer(f"Игра окончена! Слово было: `{game.secret_word}`. /start чтобы начать заново.", parse_mode='Markdown')
+                        del games[game_code]
+                    else:
+                        await message.answer(f"Неверно. Осталось попыток: {game.attempts}", reply_markup=generate_game_keyboard())
             else:  # Если ввод целого слова
                 await process_guess_logic(game, guess, message, is_word=True)
         else:
