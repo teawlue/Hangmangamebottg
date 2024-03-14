@@ -2,13 +2,21 @@ import atexit
 from aiogram import Bot, Dispatcher, executor, types
 from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
 from config import TOKEN
+import os
+import aiofiles
+import json
 import random
 import string
 import logging
 import datetime
 
-logging.basicConfig(level=logging.INFO, filename='log.txt', filemode='a',
-                    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+content_directory = "content"
+os.makedirs(content_directory, exist_ok=True)
+log_file_path = os.path.join(content_directory, "log.txt")
+games_file_path = os.path.join(content_directory, "games.txt")
+reviews_file_path = os.path.join(content_directory, "reviews.txt")
+
+logging.basicConfig(level=logging.INFO, filename='content/log.txt', filemode='a', format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
 
 bot = Bot(TOKEN)
@@ -110,6 +118,33 @@ def generate_game_keyboard():
     return keyboard
 
 
+async def save_games_async():
+    games_data = [game_code + ":" + json.dumps({'user_id': game_info['user_id'],
+                                                'secret_word': game_info['game'].secret_word,
+                                                'guessed_letters': list(game_info['game'].guessed_letters),
+                                                'attempts': game_info['game'].attempts,
+                                                'finished': game_info['game'].is_game_over()}, ensure_ascii=False)
+                  for game_code, game_info in games.items()]
+    async with aiofiles.open(games_file_path, 'w', encoding='utf-8') as file:
+        await file.write('\n'.join(games_data))
+
+
+# Функция для загрузки сохраненных игр из файла
+def load_games():
+    try:
+        with open(games_file_path, 'r', encoding='utf-8') as file:
+            for line in file:
+                game_code, json_data = line.strip().split(':', 1)
+                game_info = json.loads(json_data)
+                loaded_game = HangmanGame(game_info['secret_word'])
+                loaded_game.guessed_letters = set(game_info['guessed_letters'])
+                loaded_game.attempts = game_info['attempts']
+                # Добавьте loaded_game.finished если нужно обрабатывать завершенные игры
+                games[game_code] = {'game': loaded_game, 'user_id': game_info['user_id']}
+    except FileNotFoundError:
+        pass  # Если файл не найден, пропускаем загрузку
+
+
 # Обработчик команды /review
 @dp.message_handler(commands=['review'])
 async def review_command(message: types.Message):
@@ -151,8 +186,9 @@ async def handle_review_text(message: types.Message):
     review_info = reviews[user_id]
     review_info['text'] = message.text
     try:
-        with open('reviews.txt', 'a', encoding='utf-8') as file:
-            file.write(f"{str(datetime.datetime.now())[:-7]} - UserID: {review_info['username']}, Rating: {review_info['rate']}, Review: {message.text}\n")
+        with open(reviews_file_path, 'a', encoding='utf-8') as file:
+            file.write(
+                f"{str(datetime.datetime.now())[:-7]} - UserID: {review_info['username']}, Rating: {review_info['rate']}, Review: {message.text}\n")
         await message.answer("Ваш отзыв успешно сохранен! Спасибо за обратную связь.")
     except Exception as e:
         logger.error(f"Ошибка при сохранении отзыва: {e}")
@@ -180,6 +216,7 @@ async def start_game(message: types.Message):
     game_code = ''.join(random.choices(string.ascii_uppercase + string.digits, k=5))
     secret_word = random.choice(WORDS)
     games[game_code] = {'game': HangmanGame(secret_word), 'user_id': user_id}
+    await save_games_async()
     await message.reply(
         f"Игра 'Виселица' началась! Угадайте букву, отправив ее. Ваш код игры: `{game_code}`. У вас {len(secret_word) + 3} попыток. Используйте кнопку ниже, чтобы сдаться.",
         parse_mode='Markdown', reply_markup=generate_game_keyboard())
@@ -221,17 +258,13 @@ async def set_word(message: types.Message):
     if not secret_word.isalpha():
         await message.reply("Слово должно состоять только из букв.")
         return
+    user_id = message.from_user.id
     game_code = ''.join(random.choices(string.ascii_uppercase + string.digits, k=5))
-    games[game_code] = HangmanGame(secret_word)
+    games[game_code] = {'game': HangmanGame(secret_word), 'user_id': user_id}  # Исправление здесь
+    await save_games_async()  # Убедитесь, что это асинхронный вызов в асинхронной функции
     await message.reply(
-        f"Слово для игры установлено. Код игры: `{game_code}`. Используйте этот код. У вас {len(secret_word) + 5} попыток.",
+        f"Слово для игры установлено. Код игры: `{game_code}`. Используйте этот код для игры. У вас {len(secret_word) + 3} попыток.",
         parse_mode='Markdown', reply_markup=generate_game_keyboard())
-
-
-@dp.callback_query_handler(lambda c: c.data == 'new_game')
-async def process_new_game_callback_query(callback_query: types.CallbackQuery):
-    log_message(callback_query.from_user, callback_query.data)
-    await start_game(callback_query.message)
 
 
 @dp.callback_query_handler(lambda c: c.data == 'set_word')
@@ -293,6 +326,7 @@ async def guess_letter(message: types.Message):
     if len(parts) == 2:
         game_code, guess = parts
         if game_code in games and games[game_code]['user_id'] == message.from_user.id:
+            await save_games_async()
             game = games[game_code]['game']
             if len(guess) == 1:
                 guess_result = game.guess_letter(guess)
@@ -300,16 +334,22 @@ async def guess_letter(message: types.Message):
                     await message.reply(f"Вы уже пытались угадать букву {guess}. Попробуйте другую.")
                 elif guess_result == "correct":
                     if game.is_victory():
-                        await message.answer(f"Поздравляем! Вы угадали слово: `{game.secret_word}`. /start чтобы начать заново.", parse_mode='Markdown')
+                        await message.answer(
+                            f"Поздравляем! Вы угадали слово: `{game.secret_word}`. /start чтобы начать заново.",
+                            parse_mode='Markdown')
                         del games[game_code]
                     else:
-                        await message.answer(f"{game.get_display_word()} Осталось попыток: {game.attempts}", reply_markup=generate_game_keyboard())
+                        await message.answer(f"{game.get_display_word()} Осталось попыток: {game.attempts}",
+                                             reply_markup=generate_game_keyboard())
                 elif guess_result == "incorrect":
                     if game.is_game_over():
-                        await message.answer(f"Игра окончена! Слово было: `{game.secret_word}`. /start чтобы начать заново.", parse_mode='Markdown')
+                        await message.answer(
+                            f"Игра окончена! Слово было: `{game.secret_word}`. /start чтобы начать заново.",
+                            parse_mode='Markdown')
                         del games[game_code]
                     else:
-                        await message.answer(f"Неверно. Осталось попыток: {game.attempts}", reply_markup=generate_game_keyboard())
+                        await message.answer(f"Неверно. Осталось попыток: {game.attempts}",
+                                             reply_markup=generate_game_keyboard())
             else:  # Если ввод целого слова
                 await process_guess_logic(game, guess, message, is_word=True)
         else:
@@ -317,6 +357,6 @@ async def guess_letter(message: types.Message):
     else:
         await message.reply("Пожалуйста, отправьте код игры и букву или слово для угадывания (например, ABCDE Б).")
 
-
 if __name__ == '__main__':
+    load_games()
     executor.start_polling(dp, skip_updates=True)
