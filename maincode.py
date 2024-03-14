@@ -179,7 +179,7 @@ async def start_game(message: types.Message):
     secret_word = random.choice(WORDS)
     games[game_code] = {'game': HangmanGame(secret_word), 'user_id': user_id}
     await message.reply(
-        f"Игра 'Виселица' началась! Угадайте букву, отправив ее. Ваш код игры: `{game_code}`. У вас {len(secret_word) + 5} попыток. Используйте кнопку ниже, чтобы сдаться.",
+        f"Игра 'Виселица' началась! Угадайте букву, отправив ее. Ваш код игры: `{game_code}`. У вас {len(secret_word) + 3} попыток. Используйте кнопку ниже, чтобы сдаться.",
         parse_mode='Markdown', reply_markup=generate_game_keyboard())
 
 
