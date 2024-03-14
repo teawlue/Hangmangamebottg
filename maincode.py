@@ -76,6 +76,16 @@ def log_message(user, message_text):
     username = f"@{user.username}" if user.username else user.first_name
     logger.info(f"Message from {username}: {message_text}")
 
+async def truncate_log_file(log_file_path, max_lines=1000, leave_lines=500):
+    # Подсчет строк в файле
+    with open(log_file_path, 'r', encoding='utf-8') as file:
+        lines = file.readlines()
+
+    lines_count = len(lines)
+    if lines_count > max_lines:
+        # Оставляем только последние leave_lines строк
+        with open(log_file_path, 'w', encoding='utf-8') as file:
+            file.writelines(lines[-leave_lines:])
 
 class HangmanGame:
     def __init__(self, secret_word):
