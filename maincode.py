@@ -1,8 +1,7 @@
 import atexit
 from aiogram import Bot, Dispatcher, executor, types
 from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
-from config import TOKEN
-from about_text import about_text
+from config import TOKEN, about_text
 import os
 import aiofiles
 import json
